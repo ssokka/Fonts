@@ -20,7 +20,7 @@ rem check installed font
 reg.exe query "HKLM\SOFTWARE\%_rk%" /f "%~nx1" /d /t REG_SZ | findstr /i "%~nx1" >nul 2>&1
 if %errorlevel% equ 0 goto :eof
 
-call :echo "# %~nx1 다운로드"
+call :echo "# %~nx1 %_sn% 다운로드"
 call :download "https://github.com/ssokka/Fonts/blob/master/%~1?raw=true" "%temp%\%~nx1"
 if %errorlevel% equ 1 goto :eof
 
