@@ -2,9 +2,9 @@
 setlocal
 pushd "%~dp0"
 
-rem windows ansi cp949 euc-kr crlf
+rem windows euc-kr crlf
 
-set _pn=글꼴
+set _sn=글꼴
 
 set _bit=64
 if not exist "%ProgramFiles(x86)%" set _bit=32
@@ -24,7 +24,7 @@ call :echo "# %~nx1 다운로드"
 call :download "https://github.com/ssokka/Fonts/blob/master/%~1?raw=true" "%temp%\%~nx1"
 if %errorlevel% equ 1 goto :eof
 
-call :echo "# %~nx1 글꼴 설치"
+call :echo "# %~nx1 %_sn% 설치"
 
 rem install font for current user
 call :admin "powershell.exe" "-Command & {(New-Object -ComObject Shell.Application).Namespace(0x14).CopyHere('%temp%\%~nx1')}"
@@ -69,7 +69,7 @@ reg.exe delete "HKCU\Software\%_rk%" /v "%_rn%" /f >nul 2>&1
 rem delete download font file
 del /f /q "%temp%\%~nx1" >nul 2>&1
 
-goto :eof
+goto exit
 
 :admin
 rem %1 = process
