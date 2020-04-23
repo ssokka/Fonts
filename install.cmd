@@ -2,7 +2,7 @@
 setlocal
 pushd "%~dp0"
 
-rem windows euc-kr crlf
+rem windows crlf euc-kr
 
 set _sn=±Û²Ã
 
