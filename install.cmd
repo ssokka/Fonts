@@ -2,132 +2,161 @@
 setlocal
 pushd "%~dp0"
 
-rem windows crlf euc-kr
+:: windows crlf euc-kr
 
-set "_sn=글꼴"
 
+
+:: check %1 argument = font file
+if "%~1" equ "" goto :eof
+if /i %~x1 neq .ttf if /i %~x1 neq .ttc goto :eof
+
+:: check /np argument = no pause
+for %%i in (%*) do if %%i equ /np set "_np=1"
+
+
+
+:: set title
+set "_tt=글꼴"
+
+:: set windows bit
 set "_bit=64"
 if not exist "%ProgramFiles(x86)%" set "_bit=32"
 
-rem %1 = font file
-if "%~1" equ "" goto :eof
-if /i "%~x1" neq ".ttf" if /i "%~x1" neq ".ttc" goto :eof
+:: set powershell
+set "_ps=powershell.exe -NoProfile -Command"
 
-rem set font registry key
-set "_rk=Microsoft\Windows NT\CurrentVersion\Fonts"
+:: set user/system font file path
+set "_uf=%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1"
+set "_sf=%SystemRoot%\Fonts\%~nx1"
 
-rem check installed font
-reg.exe query "HKLM\SOFTWARE\%_rk%" /f "%~nx1" /d /t REG_SZ | findstr /i "%~nx1" >nul 2>&1
-if %errorlevel% equ 0 goto :eof
+:: set uset/system font registry path
+set "_rg=Microsoft\Windows NT\CurrentVersion\Fonts"
+set "_ur=HKCU\Software\%_rg%"
+set "_sr=HKLM\SOFTWARE\%_rg%"
 
-call :echo "# %~nx1 다운로드"
-call :download "https://github.com/ssokka/Fonts/blob/master/%~1?raw=true" "%temp%\%~nx1"
-if %errorlevel% equ 1 goto :eof
 
-call :echo "# %~nx1 %_sn% 설치"
 
-rem install font for current user
-call :admin "powershell.exe" "-Command & {(New-Object -ComObject Shell.Application).Namespace(0x14).CopyHere('%temp%\%~nx1')}"
-if not exist "%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1" (
-	call :error
-	goto :eof
-)
+:: check installed system font
+if exist "%_sf%" goto :eof
 
-rem install font for all user = not official method
+:: check installed user font
+if exist "%_uf%" set "_ui=1" & goto install
 
-rem get font display name
-for /f "tokens=*" %%f in ('reg query "HKCU\Software\%_rk%" /f "%~nx1" /t REG_SZ ^| findstr /i "%~nx1"') do set "_rq=%%f"
-if not defined _rq (
-	call :error
-	goto :eof
-)
-call :replace "text" "%_rq%" "(^.*?)\s{4}.*" "$1"
-if not defined _rep (
-	call :error
-	goto :eof
-)
-if "%_rep%" equ "" (
-	call :error
-	goto :eof
-)
+
+:: download font file from github ssokka fonts
+call :echo "# %~nx1 %_tt% 다운로드"
+call :download "https://raw.github.com/ssokka/Fonts/master/%~nx1" "%temp%\%~nx1"
+if %errorlevel% equ 1 call :error & goto :eof
+
+
+
+:: install font
+:install
+call :echo "# %~nx1 %_tt% 설치"
+if defined _ui goto install-all
+
+:: install font for user
+call :admin powershell.exe "-NoProfile -Command & {(New-Object -ComObject Shell.Application).Namespace(0x14).CopyHere('%temp%\%~nx1')}"
+if not exist "%_uf%" call :error & goto :eof
+
+:install-all
+:: install font for all user, trick, not official method
+
+:: move font file for system
+call :admin cmd.exe "/c move /y '%_uf%' '%_sf%'"
+del /f /q "%_uf%" >nul 2>&1
+if not exist "%_sf%" call :error & goto :eof
+
+:: get font registry name from current user
+for /f "tokens=*" %%f in ('reg query "%_ur%" /f "%~nx1" /t REG_SZ ^| findstr /i "%~nx1"') do set "_rq=%%f"
+if not defined _rq call :error & goto :eof
+call :replace /text "%_rq%" "(^.*?)\s{4}.*" "$1"
+if %errorlevel% equ 1 call :error & goto :eof
+if "%_rep%" equ "" call :error & goto :eof
 set "_rn=%_rep%"
 
-rem move font file for all users
-call :admin "cmd.exe" "/c move /y \""%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1\"" \""%SystemRoot%\Fonts\%~nx1\"""
-del /f /q "%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1" >nul 2>&1
-if not exist "%SystemRoot%\Fonts\%~nx1" (
-	call :error
-	goto :eof
-)
+:: add font registry data for system
+call :admin "reg.exe" "add '%_sr%' /v '%_rn%' /t REG_SZ /d '%~nx1' /f"
 
-rem add font registry data for all users
-call :admin "reg.exe" "add \""HKLM\SOFTWARE\%_rk%\"" /v \""%_rn%\"" /t REG_SZ /d \""%~nx1\"" /f"
+:: delete font registry data for user
+reg.exe delete "%_ur%" /v "%_rn%" /f >nul 2>&1
 
-rem delete font registry data for current user
-reg.exe delete "HKCU\Software\%_rk%" /v "%_rn%" /f >nul 2>&1
+:: delete downloaded font file
+:: del /f /q "%temp%\%~nx1" >nul 2>&1
 
-rem delete download font file
-del /f /q "%temp%\%~nx1" >nul 2>&1
 
-goto exit
+
+goto end & goto :eof
+
+
 
 :admin
-rem %1 = process
-rem %2 = argument
-if "%~1" equ "" exit /b 1
+:: %1 = process
+:: %2 = argument
 if "%~2" equ "" exit /b 1
 if "%~n1" equ "powershell" (
-	set "_arg=\"%2\""
+	set "_al=\"%2\""
 ) else (
-	set "_arg='%~2'"
+	setlocal EnableDelayedExpansion
+	set "_al=%~2"
+	set "_al='!_al:'=\""!'"
+	setlocal DisableDelayedExpansion
 )
-powershell.exe -Command "& {Start-Process -FilePath '%~1' -ArgumentList %_arg% -Verb RunAs -WindowStyle Hidden -Wait}"
+%_ps% "& {Start-Process -FilePath '%~1' -ArgumentList %_al% -Verb RunAs -WindowStyle Hidden -Wait}"
 goto :eof
 
 :download
-rem %1 = url
-rem %2 = output file
-if "%~1" equ "" exit /b 1
+:: %1 = url
+:: %2 = output file
 if "%~2" equ "" exit /b 1
-powershell.exe -Command "& {(New-Object System.Net.WebClient).DownloadFile('%~1', '%~2')}"
-if not exist "%~2" call :error
+set "_pcl=([System.Net.WebRequest]::Create('%~1')).GetResponse().Headers.GetValues('Content-Length')"
+set "_pfl=(Get-Item '%~2').Length"
+for /f "tokens=* usebackq" %%f in (`%_ps% "& {%_pcl%}"`) do set "_cl=%%f"
+if not defined _cl exit /b 1
+set "_dl=0"
+if exist "%~2" (
+	for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -ne %_pfl%) {Write-Host 1}}"`) do set "_dl=%%f"
+) else (
+	set "_dl=1"
+)
+if %_dl% equ 1 %_ps% "& {(New-Object System.Net.WebClient).DownloadFile('%~1', '%~2')}"
+set "_el=0"
+if exist "%~2" (
+	for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -ne %_pfl%) {Write-Host 1}}"`) do set "_el=%%f"
+) else (
+	exit /b 1
+)
 goto :eof
 
 :replace
-rem %1 = type [file|text]
-rem %2 = input [file|text]
-rem %3 = search string
-rem %4 = replace string
-rem %5 = output file
-if "%~1" equ "" exit /b 1
-if "%~2" equ "" exit /b 1
-if "%~3" equ "" exit /b 1
-if "%~4" equ "" exit /b 1
-if "%~1" neq "file" if "%~1" neq "text" exit /b 1
-if "%~1" equ "file" (
+:: %1 = type [/file|/text]
+:: %2 = input [file|text]
+:: %3 = search string
+:: %4 = replace string
+:: %5 = output file
+if %~1 neq /file if %~1 neq /text if "%~4" equ "" exit /b 1
+if %~1 equ /file (
 	if "%~5" equ "" exit /b 1
-	powershell.exe -Command "& {(Get-Content '%~2') -Replace '%~3', '%~4' | Set-Content -Path '%~5'}"
-	goto :eof
+	%_ps% "& {(Get-Content '%~2') -Replace '%~3', '%~4' | Set-Content -Path '%~5'}"
 )
-if "%~1" equ "text" (
-	for /f "tokens=* usebackq" %%f in (`powershell.exe -Command "& {(('%~2') -Replace '%~3', '%~4').Trim()}"`) do set "_rep=%%f"
-	goto :eof
+if %~1 equ /text (
+	for /f "tokens=* usebackq" %%f in (`%_ps% "& {(('%~2') -Replace '%~3', '%~4').Trim()}"`) do set "_rep=%%f"
+	if not defined _rep exit /b 1
 )
 goto :eof
 
 :echo
-if "%~1" equ "" goto :eof
 echo.
-echo %~1
+if "%~1" neq "" echo %~1
 goto :eof
 
 :error
 echo ! 오류가 발생했습니다.
-goto exit
+goto end
 exit /b 1
-goto :eof
 
-:exit
+:end
+if defined _np goto :eof
 call :echo "* 스크립트를 종료합니다. 아무 키나 누르십시오."
 pause >nul
 goto :eof
