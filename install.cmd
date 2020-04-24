@@ -36,6 +36,7 @@ set "_tt=±Û²Ã"
 set "_bit=64"
 if not exist "%ProgramFiles(x86)%" set "_bit=32"
 
+:: set error process
 set "_er=call :error & goto :eof"
 
 :: set powershell
