@@ -4,23 +4,23 @@ pushd "%~dp0"
 
 rem windows crlf euc-kr
 
-set _sn=글꼴
+set "_sn=글꼴"
 
-set _bit=64
-if not exist "%ProgramFiles(x86)%" set _bit=32
+set "_bit=64"
+if not exist "%ProgramFiles(x86)%" set "_bit=32"
 
 rem %1 = font file
 if "%~1" equ "" goto :eof
 if /i "%~x1" neq ".ttf" if /i "%~x1" neq ".ttc" goto :eof
 
 rem set font registry key
-set _rk=Microsoft\Windows NT\CurrentVersion\Fonts
+set "_rk=Microsoft\Windows NT\CurrentVersion\Fonts"
 
 rem check installed font
 reg.exe query "HKLM\SOFTWARE\%_rk%" /f "%~nx1" /d /t REG_SZ | findstr /i "%~nx1" >nul 2>&1
 if %errorlevel% equ 0 goto :eof
 
-call :echo "# %~nx1 %_sn% 다운로드"
+call :echo "# %~nx1 다운로드"
 call :download "https://github.com/ssokka/Fonts/blob/master/%~1?raw=true" "%temp%\%~nx1"
 if %errorlevel% equ 1 goto :eof
 
@@ -36,7 +36,7 @@ if not exist "%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1" (
 rem install font for all user = not official method
 
 rem get font display name
-for /f "tokens=*" %%f in ('reg query "HKCU\Software\%_rk%" /f "%~nx1" /t REG_SZ ^| findstr /i "%~nx1"') do set _rq=%%f
+for /f "tokens=*" %%f in ('reg query "HKCU\Software\%_rk%" /f "%~nx1" /t REG_SZ ^| findstr /i "%~nx1"') do set "_rq=%%f"
 if not defined _rq (
 	call :error
 	goto :eof
@@ -50,7 +50,7 @@ if "%_rep%" equ "" (
 	call :error
 	goto :eof
 )
-set _rn=%_rep%
+set "_rn=%_rep%"
 
 rem move font file for all users
 call :admin "cmd.exe" "/c move /y \""%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1\"" \""%SystemRoot%\Fonts\%~nx1\"""
@@ -110,7 +110,7 @@ if "%~1" equ "file" (
 	goto :eof
 )
 if "%~1" equ "text" (
-	for /f "tokens=* usebackq" %%f in (`powershell.exe -Command "& {(('%~2') -Replace '%~3', '%~4').Trim()}"`) do set _rep=%%f
+	for /f "tokens=* usebackq" %%f in (`powershell.exe -Command "& {(('%~2') -Replace '%~3', '%~4').Trim()}"`) do set "_rep=%%f"
 	goto :eof
 )
 goto :eof
