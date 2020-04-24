@@ -4,22 +4,30 @@ pushd "%~dp0"
 
 :: windows crlf euc-kr
 
+:: https://github.com/ssokka/Fonts
+
 :: tested
-:: windows 10 Pro 1909 64bit
+::   windows 10 Pro 1909 64bit
 
-:: useage
-:: [cmd] powershell.exe -NoProfile -Command "& {(New-Object System.Net.WebClient).DownloadFile('https://raw.github.com/ssokka/Fonts/master/install.cmd', '%temp%\install.cmd')}" && "%temp%\install.cmd" "D2Coding.ttc"
+:: useage default
+::   install.cmd "font file" [/np]
+::     /np : no pause
+
+:: example command line
+::   powershell.exe -NoProfile -Command "& {(New-Object System.Net.WebClient).DownloadFile('https://raw.github.com/ssokka/Fonts/master/install.cmd', '%temp%\install.cmd')}" && "%temp%\install.cmd" "D2Coding.ttc"
+
+:: example script
+::   powershell.exe -NoProfile -Command "& {(New-Object System.Net.WebClient).DownloadFile('https://raw.github.com/ssokka/Fonts/master/install.cmd', '%temp%\fi.cmd')}"
+::   call "%temp%\fi.cmd" "D2Coding.ttc" /np
 
 
 
-:: check argument %1 = font file
+:: check argument %1 : font file
 if "%~1" equ "" goto :eof
 if /i %~x1 neq .ttf if /i %~x1 neq .ttc goto :eof
 
-:: check argument /np = no pause
+:: check argument /np : no pause
 for %%i in (%*) do if %%i equ /np set "_np=1"
-
-
 
 :: set title
 set "_tt=글꼴"
@@ -31,49 +39,41 @@ if not exist "%ProgramFiles(x86)%" set "_bit=32"
 :: set powershell
 set "_ps=powershell.exe -NoProfile -Command"
 
-:: set user, system font file
+:: set font file
 set "_uf=%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1"
 set "_sf=%SystemRoot%\Fonts\%~nx1"
 
-:: set uset, system font registry
-set "_rg=Microsoft\Windows NT\CurrentVersion\Fonts"
-set "_ur=HKCU\Software\%_rg%"
-set "_sr=HKLM\SOFTWARE\%_rg%"
+:: set font registry
+set "_fr=Microsoft\Windows NT\CurrentVersion\Fonts"
+set "_ur=HKCU\Software\%_fr%"
+set "_sr=HKLM\SOFTWARE\%_fr%"
 
-
-
-:: check installed system font
+:: check installed font file
 if exist "%_sf%" goto :eof
-
-:: check installed user font
 if exist "%_uf%" set "_ui=1" & goto install
 
-
-:: download font file from github ssokka fonts
+:: download font file from https://raw.github.com/ssokka/Fonts/master
 call :echo "# %~nx1 %_tt% 다운로드"
 call :download "https://raw.github.com/ssokka/Fonts/master/%~nx1" "%temp%\%~nx1"
 if %errorlevel% equ 1 call :error & goto :eof
 
-
-
-:: install font
 :install
 call :echo "# %~nx1 %_tt% 설치"
-if defined _ui goto install-all
+if defined _ui goto system
 
 :: install font for user
 call :admin powershell.exe "-NoProfile -Command & {(New-Object -ComObject Shell.Application).Namespace(0x14).CopyHere('%temp%\%~nx1')}"
 if not exist "%_uf%" call :error & goto :eof
 
-:install-all
-:: install font for all user, trick, not official method
+:: install system font, trick, not official method
+:system
 
-:: move font file for system
+:: move user font file to system font file
 call :admin cmd.exe "/c move /y '%_uf%' '%_sf%'"
 del /f /q "%_uf%" >nul 2>&1
 if not exist "%_sf%" call :error & goto :eof
 
-:: get font registry name from current user
+:: get font registry name from installed user font
 for /f "tokens=*" %%f in ('reg query "%_ur%" /f "%~nx1" /t REG_SZ ^| findstr /i "%~nx1"') do set "_rq=%%f"
 if not defined _rq call :error & goto :eof
 call :replace /text "%_rq%" "(^.*?)\s{4}.*" "$1"
@@ -81,16 +81,14 @@ if %errorlevel% equ 1 call :error & goto :eof
 if "%_rep%" equ "" call :error & goto :eof
 set "_rn=%_rep%"
 
-:: add font registry data for system
+:: add system font registry data
 call :admin "reg.exe" "add '%_sr%' /v '%_rn%' /t REG_SZ /d '%~nx1' /f"
 
-:: delete font registry data for user
+:: delete user font registry data
 reg.exe delete "%_ur%" /v "%_rn%" /f >nul 2>&1
 
 :: delete downloaded font file
 :: del /f /q "%temp%\%~nx1" >nul 2>&1
-
-
 
 goto end & goto :eof
 
@@ -123,7 +121,7 @@ set _for=for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -And %_cl% -eq 
 set "_dl=1"
 if exist "%~2" %_for% set "_dl=%%f"
 if %_dl% equ 1 %_ps% "& {(New-Object System.Net.WebClient).DownloadFile('%~1', '%~2')}"
-if exist "%~2" %_for% exit /b %%f"
+if exist "%~2" %_for% exit /b %%f
 exit /b 1
 goto :eof
 
