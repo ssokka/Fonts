@@ -65,7 +65,7 @@ if defined _ui goto system
 call :admin powershell.exe "-NoProfile -Command & {(New-Object -ComObject Shell.Application).Namespace(0x14).CopyHere('%temp%\%~nx1')}"
 if not exist "%_uf%" call :error & goto :eof
 
-:: install system font, trick, not official method
+:: install font for system : trick, not official method
 :system
 
 :: move user font file to system font file
@@ -81,7 +81,7 @@ if %errorlevel% equ 1 call :error & goto :eof
 if "%_rep%" equ "" call :error & goto :eof
 set "_rn=%_rep%"
 
-:: add system font registry data
+:: add font registry data for system
 call :admin "reg.exe" "add '%_sr%' /v '%_rn%' /t REG_SZ /d '%~nx1' /f"
 
 :: delete user font registry data
