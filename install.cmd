@@ -4,13 +4,19 @@ pushd "%~dp0"
 
 :: windows crlf euc-kr
 
+:: tested
+:: windows 10 Pro 1909 64bit
+
+:: useage
+:: [cmd] powershell.exe -NoProfile -Command "& {(New-Object System.Net.WebClient).DownloadFile('https://raw.github.com/ssokka/Fonts/master/install.cmd', '%temp%\install.cmd')}" && "%temp%\install.cmd" "D2Coding.ttc"
 
 
-:: check %1 argument = font file
+
+:: check argument %1 = font file
 if "%~1" equ "" goto :eof
 if /i %~x1 neq .ttf if /i %~x1 neq .ttc goto :eof
 
-:: check /np argument = no pause
+:: check argument /np = no pause
 for %%i in (%*) do if %%i equ /np set "_np=1"
 
 
@@ -25,11 +31,11 @@ if not exist "%ProgramFiles(x86)%" set "_bit=32"
 :: set powershell
 set "_ps=powershell.exe -NoProfile -Command"
 
-:: set user/system font file path
+:: set user, system font file
 set "_uf=%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1"
 set "_sf=%SystemRoot%\Fonts\%~nx1"
 
-:: set uset/system font registry path
+:: set uset, system font registry
 set "_rg=Microsoft\Windows NT\CurrentVersion\Fonts"
 set "_ur=HKCU\Software\%_rg%"
 set "_sr=HKLM\SOFTWARE\%_rg%"
@@ -113,19 +119,12 @@ set "_pcl=([System.Net.WebRequest]::Create('%~1')).GetResponse().Headers.GetValu
 set "_pfl=(Get-Item '%~2').Length"
 for /f "tokens=* usebackq" %%f in (`%_ps% "& {%_pcl%}"`) do set "_cl=%%f"
 if not defined _cl exit /b 1
-set "_dl=0"
-if exist "%~2" (
-	for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -ne %_pfl%) {Write-Host 1}}"`) do set "_dl=%%f"
-) else (
-	set "_dl=1"
-)
+set _for=for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -And %_cl% -eq %_pfl%) {Write-Host 0}}"`) do
+set "_dl=1"
+if exist "%~2" %_for% set "_dl=%%f"
 if %_dl% equ 1 %_ps% "& {(New-Object System.Net.WebClient).DownloadFile('%~1', '%~2')}"
-set "_el=0"
-if exist "%~2" (
-	for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -ne %_pfl%) {Write-Host 1}}"`) do set "_el=%%f"
-) else (
-	exit /b 1
-)
+if exist "%~2" %_for% exit /b %%f"
+exit /b 1
 goto :eof
 
 :replace
