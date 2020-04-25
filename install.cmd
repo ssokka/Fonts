@@ -116,16 +116,12 @@ goto :eof
 :: %1 = url
 :: %2 = output file
 if "%~2" equ "" exit /b 1
-set "_pcl=([System.Net.WebRequest]::Create('%~1')).GetResponse().Headers.GetValues('Content-Length')"
-set "_pfl=(Get-Item '%~2').Length"
-for /f "tokens=* usebackq" %%f in (`%_ps% "& {%_pcl%}"`) do set "_cl=%%f"
+for /f "tokens=* usebackq" %%f in (`%_ps% "& {([System.Net.WebRequest]::Create('%~1')).GetResponse().Headers.GetValues('Content-Length')}"`) do set "_cl=%%f"
 if not defined _cl exit /b 1
-set _for=for /f "tokens=* usebackq" %%f in (`%_ps% "& {if (%_cl% -And %_cl% -eq %_pfl%) {Write-Host 0}}"`) do
-set "_dl=1"
-if exist "%~2" %_for% set "_dl=%%f"
+set _ccl=for /f "tokens=* usebackq" %%f in (`%_ps% "& {if ((Test-Path '%~2') -and %_cl% -and %_cl% -eq (Get-Item '%~2').Length) {0} else {1}}"`) do
+%_ccl% set "_dl=%%f"
 if %_dl% equ 1 %_ps% "& {(New-Object System.Net.WebClient).DownloadFile('%~1', '%~2')}"
-if exist "%~2" %_for% exit /b %%f
-exit /b 1
+%_ccl% exit /b %%f
 goto :eof
 
 :replace
