@@ -26,9 +26,6 @@ pushd "%~dp0"
 if "%~1" equ "" goto :eof
 if /i %~x1 neq .ttf if /i %~x1 neq .ttc goto :eof
 
-:: check argument /np = no pause
-for %%i in (%*) do if %%i equ /np set "_np=1"
-
 :: set title
 set "_tt=±Û²Ã"
 
@@ -41,6 +38,9 @@ set "_er=call :error & goto :eof"
 
 :: set powershell
 set "_ps=powershell.exe -NoProfile -Command"
+
+:: check argument /np = no pause
+for %%i in (%*) do if %%i equ /np set "_np=1"
 
 :: set font file
 set "_uf=%LOCALAPPDATA%\Microsoft\Windows\Fonts\%~nx1"
